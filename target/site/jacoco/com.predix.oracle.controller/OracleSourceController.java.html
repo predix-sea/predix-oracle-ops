@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OracleSourceController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.controller</a> &gt; <span class="el_source">OracleSourceController.java</span></div><h1>OracleSourceController.java</h1><pre class="source lang-java linenums">package com.predix.oracle.controller;
+
+import com.predix.oracle.controller.dto.ApiResponse;
+import com.predix.oracle.controller.dto.CreateSourceRequest;
+import com.predix.oracle.controller.dto.PatchSourceRequest;
+import com.predix.oracle.repository.entity.OracleSourceEntity;
+import com.predix.oracle.service.OracleSourceService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/v1/oracle/sources&quot;)
+@RequiredArgsConstructor
+public class OracleSourceController {
+
+    private final OracleSourceService sourceService;
+
+    @GetMapping
+    public ApiResponse&lt;List&lt;OracleSourceEntity&gt;&gt; list() {
+<span class="nc" id="L23">        return ApiResponse.ok(sourceService.listAll());</span>
+    }
+
+    @PostMapping
+    public ApiResponse&lt;OracleSourceEntity&gt; create(@Valid @RequestBody CreateSourceRequest request) {
+<span class="nc" id="L28">        return ApiResponse.ok(sourceService.create(request));</span>
+    }
+
+    @PatchMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;OracleSourceEntity&gt; patch(@PathVariable Long id,
+                                                 @RequestBody PatchSourceRequest request) {
+<span class="nc" id="L34">        return ApiResponse.ok(sourceService.patch(id, request));</span>
+    }
+
+    @PostMapping(&quot;/{id}/enable&quot;)
+    public ApiResponse&lt;OracleSourceEntity&gt; enable(@PathVariable Long id) {
+<span class="nc" id="L39">        return ApiResponse.ok(sourceService.setEnabled(id, true));</span>
+    }
+
+    @PostMapping(&quot;/{id}/disable&quot;)
+    public ApiResponse&lt;OracleSourceEntity&gt; disable(@PathVariable Long id) {
+<span class="nc" id="L44">        return ApiResponse.ok(sourceService.setEnabled(id, false));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

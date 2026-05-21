@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ResolutionJobService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.service</a> &gt; <span class="el_source">ResolutionJobService.java</span></div><h1>ResolutionJobService.java</h1><pre class="source lang-java linenums">package com.predix.oracle.service;
+
+import com.predix.oracle.domain.ActorType;
+import com.predix.oracle.domain.JobStatus;
+import com.predix.oracle.domain.JobType;
+import com.predix.oracle.exception.OracleErrorCode;
+import com.predix.oracle.exception.OracleException;
+import com.predix.oracle.mq.OracleJobMessage;
+import com.predix.oracle.mq.OracleMqPublisher;
+import com.predix.oracle.repository.ResolutionJobRepository;
+import com.predix.oracle.repository.entity.ResolutionJobEntity;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class ResolutionJobService {
+
+    private final ResolutionJobRepository jobRepository;
+    private final OracleMqPublisher mqPublisher;
+    private final RetryPolicyService retryPolicy;
+
+    @Transactional
+    public ResolutionJobEntity createJob(String marketId, JobType type, String idempotencyKey,
+                                         Map&lt;String, Object&gt; payload, ActorType actor) {
+<span class="fc" id="L33">        jobRepository.findByIdempotencyKey(idempotencyKey).ifPresent(existing -&gt; {</span>
+<span class="pc bpc" id="L34" title="3 of 4 branches missed.">            if (existing.getStatus() == JobStatus.RUNNING || existing.getStatus() == JobStatus.SUCCEEDED) {</span>
+<span class="fc" id="L35">                throw new OracleException(OracleErrorCode.JOB_IDEMPOTENCY_CONFLICT,</span>
+                        &quot;Job already exists: &quot; + idempotencyKey);
+            }
+<span class="nc" id="L38">        });</span>
+
+<span class="fc" id="L40">        ResolutionJobEntity job = ResolutionJobEntity.builder()</span>
+<span class="fc" id="L41">                .jobCode(&quot;JOB-&quot; + UUID.randomUUID().toString().substring(0, 8).toUpperCase())</span>
+<span class="fc" id="L42">                .marketId(marketId)</span>
+<span class="fc" id="L43">                .jobType(type)</span>
+<span class="fc" id="L44">                .status(JobStatus.PENDING)</span>
+<span class="fc" id="L45">                .idempotencyKey(idempotencyKey)</span>
+<span class="fc" id="L46">                .retryCount(0)</span>
+<span class="fc" id="L47">                .payload(payload)</span>
+<span class="fc" id="L48">                .build();</span>
+
+        try {
+<span class="fc" id="L51">            job = jobRepository.save(job);</span>
+<span class="nc" id="L52">        } catch (DataIntegrityViolationException e) {</span>
+<span class="nc" id="L53">            return jobRepository.findByIdempotencyKey(idempotencyKey)</span>
+<span class="nc" id="L54">                    .orElseThrow(() -&gt; new OracleException(OracleErrorCode.JOB_IDEMPOTENCY_CONFLICT,</span>
+                            &quot;Duplicate job&quot;));
+<span class="fc" id="L56">        }</span>
+
+<span class="fc" id="L58">        mqPublisher.publishJob(OracleJobMessage.builder()</span>
+<span class="fc" id="L59">                .jobId(job.getId())</span>
+<span class="fc" id="L60">                .marketId(marketId)</span>
+<span class="fc" id="L61">                .jobType(type)</span>
+<span class="fc" id="L62">                .idempotencyKey(idempotencyKey)</span>
+<span class="fc" id="L63">                .actor(actor)</span>
+<span class="fc" id="L64">                .payload(payload)</span>
+<span class="fc" id="L65">                .build());</span>
+<span class="fc" id="L66">        return job;</span>
+    }
+
+    @Transactional
+    public ResolutionJobEntity markRunning(Long jobId) {
+<span class="nc" id="L71">        ResolutionJobEntity job = getJob(jobId);</span>
+<span class="nc" id="L72">        job.setStatus(JobStatus.RUNNING);</span>
+<span class="nc" id="L73">        return jobRepository.save(job);</span>
+    }
+
+    @Transactional
+    public ResolutionJobEntity markSucceeded(Long jobId) {
+<span class="fc" id="L78">        ResolutionJobEntity job = getJob(jobId);</span>
+<span class="fc" id="L79">        job.setStatus(JobStatus.SUCCEEDED);</span>
+<span class="fc" id="L80">        job.setNextRetryAt(null);</span>
+<span class="fc" id="L81">        return jobRepository.save(job);</span>
+    }
+
+    @Transactional
+    public ResolutionJobEntity markFailed(Long jobId, boolean retryable) {
+<span class="fc" id="L86">        ResolutionJobEntity job = getJob(jobId);</span>
+<span class="fc" id="L87">        job.setRetryCount(job.getRetryCount() + 1);</span>
+<span class="pc bpc" id="L88" title="1 of 4 branches missed.">        if (retryable &amp;&amp; retryPolicy.canRetry(job.getRetryCount())) {</span>
+<span class="fc" id="L89">            job.setStatus(JobStatus.RETRYING);</span>
+<span class="fc" id="L90">            job.setNextRetryAt(retryPolicy.nextRetryAt(job.getRetryCount()));</span>
+        } else {
+<span class="fc" id="L92">            job.setStatus(JobStatus.DEAD);</span>
+<span class="fc" id="L93">            mqPublisher.publishDlq(OracleJobMessage.builder()</span>
+<span class="fc" id="L94">                    .jobId(job.getId())</span>
+<span class="fc" id="L95">                    .marketId(job.getMarketId())</span>
+<span class="fc" id="L96">                    .jobType(job.getJobType())</span>
+<span class="fc" id="L97">                    .idempotencyKey(job.getIdempotencyKey())</span>
+<span class="fc" id="L98">                    .build());</span>
+        }
+<span class="fc" id="L100">        return jobRepository.save(job);</span>
+    }
+
+    @Transactional
+    public ResolutionJobEntity retryJob(Long jobId, ActorType actor) {
+<span class="fc" id="L105">        ResolutionJobEntity job = getJob(jobId);</span>
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        if (job.getStatus() == JobStatus.SUCCEEDED) {</span>
+<span class="nc" id="L107">            throw new OracleException(OracleErrorCode.RESOLUTION_STATE_CONFLICT, &quot;Job already succeeded&quot;);</span>
+        }
+<span class="fc" id="L109">        job.setStatus(JobStatus.PENDING);</span>
+<span class="fc" id="L110">        job.setNextRetryAt(null);</span>
+<span class="fc" id="L111">        jobRepository.save(job);</span>
+<span class="fc" id="L112">        mqPublisher.publishJob(OracleJobMessage.builder()</span>
+<span class="fc" id="L113">                .jobId(job.getId())</span>
+<span class="fc" id="L114">                .marketId(job.getMarketId())</span>
+<span class="fc" id="L115">                .jobType(job.getJobType())</span>
+<span class="fc" id="L116">                .idempotencyKey(job.getIdempotencyKey())</span>
+<span class="fc" id="L117">                .actor(actor)</span>
+<span class="fc" id="L118">                .payload(job.getPayload())</span>
+<span class="fc" id="L119">                .build());</span>
+<span class="fc" id="L120">        return job;</span>
+    }
+
+    public List&lt;ResolutionJobEntity&gt; findJobs(String marketId, JobStatus status, JobType type) {
+<span class="pc bpc" id="L124" title="2 of 4 branches missed.">        if (marketId != null &amp;&amp; status != null) {</span>
+<span class="nc" id="L125">            return jobRepository.findByMarketIdAndStatus(marketId, status);</span>
+        }
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">        if (marketId != null) {</span>
+<span class="fc" id="L128">            return jobRepository.findByMarketId(marketId);</span>
+        }
+<span class="nc" id="L130">        return jobRepository.findAll();</span>
+    }
+
+    public ResolutionJobEntity getJob(Long id) {
+<span class="fc" id="L134">        return jobRepository.findById(id)</span>
+<span class="pc" id="L135">                .orElseThrow(() -&gt; new OracleException(OracleErrorCode.NOT_FOUND, &quot;Job not found: &quot; + id));</span>
+    }
+
+    public List&lt;ResolutionJobEntity&gt; findRetryable() {
+<span class="nc" id="L139">        return jobRepository.findRetryable(</span>
+<span class="nc" id="L140">                List.of(JobStatus.FAILED, JobStatus.RETRYING),</span>
+<span class="nc" id="L141">                retryPolicy.maxAttempts(),</span>
+<span class="nc" id="L142">                Instant.now());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

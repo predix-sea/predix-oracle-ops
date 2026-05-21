@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EvidenceCollectionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.crawler</a> &gt; <span class="el_source">EvidenceCollectionService.java</span></div><h1>EvidenceCollectionService.java</h1><pre class="source lang-java linenums">package com.predix.oracle.crawler;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.predix.oracle.audit.AuditService;
+import com.predix.oracle.domain.ActorType;
+import com.predix.oracle.domain.ResolutionPhase;
+import com.predix.oracle.exception.OracleErrorCode;
+import com.predix.oracle.exception.OracleException;
+import com.predix.oracle.repository.OracleEvidenceRepository;
+import com.predix.oracle.repository.OracleSourceRepository;
+import com.predix.oracle.repository.entity.OracleEvidenceEntity;
+import com.predix.oracle.repository.entity.OracleSourceEntity;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Instant;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class EvidenceCollectionService {
+
+    private final OracleSourceRepository sourceRepository;
+    private final OracleEvidenceRepository evidenceRepository;
+    private final HttpSourceCrawler httpSourceCrawler;
+    private final EvidenceAggregator evidenceAggregator;
+    private final AuditService auditService;
+    private final ObjectMapper objectMapper;
+
+    @Transactional
+    public EvidenceAggregationResult collectForMarket(String marketId, ActorType actor) {
+<span class="fc" id="L37">        List&lt;OracleSourceEntity&gt; sources = sourceRepository.findByEnabledTrueOrderByPriorityAsc();</span>
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">        if (sources.isEmpty()) {</span>
+<span class="nc" id="L39">            throw new OracleException(OracleErrorCode.ORACLE_SOURCE_UNAVAILABLE, &quot;No enabled oracle sources&quot;);</span>
+        }
+
+<span class="fc" id="L42">        int successCount = 0;</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        for (OracleSourceEntity source : sources) {</span>
+            try {
+<span class="fc" id="L45">                SourceFetchResult fetch = httpSourceCrawler.fetch(source, marketId);</span>
+<span class="fc" id="L46">                String digest = digest(marketId, source.getId(), fetch);</span>
+<span class="fc" id="L47">                OracleEvidenceEntity evidence = OracleEvidenceEntity.builder()</span>
+<span class="fc" id="L48">                        .marketId(marketId)</span>
+<span class="fc" id="L49">                        .sourceId(source.getId())</span>
+<span class="fc" id="L50">                        .sourceUrl(fetch.getSourceUrl())</span>
+<span class="fc" id="L51">                        .fetchedAt(Instant.now())</span>
+<span class="fc" id="L52">                        .rawPayload(fetch.getRawPayload())</span>
+<span class="fc" id="L53">                        .normalizedOutcomeCode(fetch.getNormalizedOutcome())</span>
+<span class="fc" id="L54">                        .confidenceScore(fetch.getConfidenceScore())</span>
+<span class="fc" id="L55">                        .hashDigest(digest)</span>
+<span class="fc" id="L56">                        .build();</span>
+<span class="fc" id="L57">                evidenceRepository.save(evidence);</span>
+<span class="fc" id="L58">                successCount++;</span>
+<span class="nc" id="L59">            } catch (OracleException ex) {</span>
+                // continue other sources; partial evidence is append-only
+<span class="fc" id="L61">            }</span>
+<span class="fc" id="L62">        }</span>
+
+<span class="fc" id="L64">        List&lt;OracleEvidenceEntity&gt; all = evidenceRepository.findByMarketIdOrderByFetchedAtDesc(marketId);</span>
+<span class="fc" id="L65">        EvidenceAggregationResult result = evidenceAggregator.aggregate(all);</span>
+
+<span class="fc" id="L67">        auditService.record(marketId, ResolutionPhase.EVIDENCE_COLLECT.name(), actor,</span>
+                &quot;COLLECT_EVIDENCE&quot;,
+<span class="fc" id="L69">                Map.of(&quot;sourcesAttempted&quot;, sources.size(), &quot;sourcesSucceeded&quot;, successCount),</span>
+<span class="fc" id="L70">                Map.of(</span>
+<span class="fc" id="L71">                        &quot;quorumReached&quot;, result.isQuorumReached(),</span>
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">                        &quot;winningOutcome&quot;, result.getWinningOutcome() != null ? result.getWinningOutcome() : &quot;&quot;,</span>
+<span class="fc" id="L73">                        &quot;requiresManualReview&quot;, result.isRequiresManualReview(),</span>
+<span class="fc" id="L74">                        &quot;evidenceCount&quot;, all.size()</span>
+                ));
+
+<span class="fc" id="L77">        return result;</span>
+    }
+
+    public List&lt;OracleEvidenceEntity&gt; listByMarket(String marketId) {
+<span class="nc" id="L81">        return evidenceRepository.findByMarketIdOrderByFetchedAtDesc(marketId);</span>
+    }
+
+    private String digest(String marketId, Long sourceId, SourceFetchResult fetch) {
+        try {
+<span class="fc" id="L86">            String payload = marketId + &quot;|&quot; + sourceId + &quot;|&quot; + objectMapper.writeValueAsString(fetch.getRawPayload());</span>
+<span class="fc" id="L87">            MessageDigest md = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+<span class="fc" id="L88">            byte[] hash = md.digest(payload.getBytes(StandardCharsets.UTF_8));</span>
+<span class="fc" id="L89">            return HexFormat.of().formatHex(hash);</span>
+<span class="fc" id="L90">        } catch (Exception e) {</span>
+<span class="fc" id="L91">            return &quot;digest-error&quot;;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

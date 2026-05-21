@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.predix.oracle.exception.GlobalExceptionHandlerTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.predix.oracle.exception.GlobalExceptionHandlerTest

@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: predix_oracle
+      POSTGRES_USER: predix
+      POSTGRES_PASSWORD: predix
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: predix
+      RABBITMQ_DEFAULT_PASS: predix
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  oracle-ops:
+    build: .
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: predix_oracle
+      DB_USER: predix
+      DB_PASSWORD: predix
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+      ORACLE_ADMIN_TOKEN: dev-admin-token
+      MARKET_SCHEMA_URL: http://host.docker.internal:8081
+      UMA_ENABLED: "false"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+
+volumes:
+  pgdata:

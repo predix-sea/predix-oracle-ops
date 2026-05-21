@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EvidenceController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.controller</a> &gt; <span class="el_source">EvidenceController.java</span></div><h1>EvidenceController.java</h1><pre class="source lang-java linenums">package com.predix.oracle.controller;
+
+import com.predix.oracle.config.security.AdminTokenInterceptor;
+import com.predix.oracle.controller.dto.ApiResponse;
+import com.predix.oracle.crawler.EvidenceAggregationResult;
+import com.predix.oracle.crawler.EvidenceCollectionService;
+import com.predix.oracle.domain.ActorType;
+import com.predix.oracle.repository.entity.OracleEvidenceEntity;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/v1/oracle/evidences&quot;)
+@RequiredArgsConstructor
+public class EvidenceController {
+
+    private final EvidenceCollectionService evidenceService;
+
+    @GetMapping
+    public ApiResponse&lt;List&lt;OracleEvidenceEntity&gt;&gt; list(@RequestParam String marketId) {
+<span class="nc" id="L24">        return ApiResponse.ok(evidenceService.listByMarket(marketId));</span>
+    }
+
+    @PostMapping(&quot;/collect&quot;)
+    public ApiResponse&lt;EvidenceAggregationResult&gt; collect(@RequestParam String marketId,
+                                                        HttpServletRequest request) {
+<span class="nc bnc" id="L30" title="All 2 branches missed.">        ActorType actor = request.getAttribute(AdminTokenInterceptor.ATTR_ACTOR) != null</span>
+<span class="nc" id="L31">                ? ActorType.MANUAL : ActorType.SYSTEM;</span>
+<span class="nc" id="L32">        return ApiResponse.ok(evidenceService.collectForMarket(marketId, actor));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

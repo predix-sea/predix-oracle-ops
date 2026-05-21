@@ -1,0 +1,31 @@
+spring:
+  jackson:
+    time-zone: UTC
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+predix:
+  oracle:
+    auth-token: test-token
+    evidence:
+      min-sources: 2
+      quorum-ratio: 0.51
+    retry:
+      max-attempts: 3
+      base-delay-ms: 100
+      multiplier: 2.0
+    uma:
+      enabled: false
+    clients:
+      market-schema:
+        enabled: false
+      matching-engine:
+        enabled: false
+
+logging:
+  level:
+    com.predix.oracle: WARN

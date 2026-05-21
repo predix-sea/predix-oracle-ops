@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminTokenInterceptor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.config.security</a> &gt; <span class="el_source">AdminTokenInterceptor.java</span></div><h1>AdminTokenInterceptor.java</h1><pre class="source lang-java linenums">package com.predix.oracle.config.security;
+
+import com.predix.oracle.config.PredixOracleProperties;
+import com.predix.oracle.exception.OracleErrorCode;
+import com.predix.oracle.exception.OracleException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+@Component
+@RequiredArgsConstructor
+public class AdminTokenInterceptor implements HandlerInterceptor {
+
+    public static final String HEADER_TOKEN = &quot;X-Oracle-Admin-Token&quot;;
+    public static final String ATTR_ACTOR = &quot;oracleActor&quot;;
+
+    private final PredixOracleProperties properties;
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+<span class="nc bnc" id="L24" title="All 2 branches missed.">        if (HttpMethod.GET.matches(request.getMethod())</span>
+<span class="nc bnc" id="L25" title="All 2 branches missed.">                &amp;&amp; request.getRequestURI().contains(&quot;/evidences&quot;)</span>
+<span class="nc bnc" id="L26" title="All 2 branches missed.">                &amp;&amp; !request.getRequestURI().contains(&quot;/collect&quot;)) {</span>
+<span class="nc" id="L27">            return true;</span>
+        }
+<span class="nc bnc" id="L29" title="All 4 branches missed.">        if (HttpMethod.GET.matches(request.getMethod()) &amp;&amp; request.getRequestURI().contains(&quot;/sources&quot;)) {</span>
+<span class="nc" id="L30">            return true;</span>
+        }
+<span class="nc bnc" id="L32" title="All 4 branches missed.">        if (HttpMethod.GET.matches(request.getMethod()) &amp;&amp; request.getRequestURI().contains(&quot;/jobs&quot;)) {</span>
+<span class="nc" id="L33">            return true;</span>
+        }
+<span class="nc bnc" id="L35" title="All 4 branches missed.">        if (HttpMethod.GET.matches(request.getMethod()) &amp;&amp; request.getRequestURI().contains(&quot;/uma/&quot;)) {</span>
+<span class="nc" id="L36">            return true;</span>
+        }
+
+<span class="nc" id="L39">        String token = request.getHeader(HEADER_TOKEN);</span>
+<span class="nc bnc" id="L40" title="All 6 branches missed.">        if (token == null || token.isBlank() || !token.equals(properties.getAuthToken())) {</span>
+<span class="nc" id="L41">            throw new OracleException(OracleErrorCode.UNAUTHORIZED, &quot;Invalid or missing admin token&quot;);</span>
+        }
+<span class="nc" id="L43">        request.setAttribute(ATTR_ACTOR, &quot;MANUAL&quot;);</span>
+<span class="nc" id="L44">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Web3jUmaClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.oracle</a> &gt; <span class="el_source">Web3jUmaClient.java</span></div><h1>Web3jUmaClient.java</h1><pre class="source lang-java linenums">package com.predix.oracle.oracle;
+
+import com.predix.oracle.client.dto.MarketDto;
+import com.predix.oracle.config.PredixOracleProperties;
+import com.predix.oracle.exception.OracleErrorCode;
+import com.predix.oracle.exception.OracleException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+import org.web3j.crypto.Credentials;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.http.HttpService;
+import org.web3j.tx.RawTransactionManager;
+import org.web3j.tx.gas.DefaultGasProvider;
+
+import java.util.Map;
+import java.util.UUID;
+
+<span class="nc" id="L19">@Slf4j</span>
+@Service
+@ConditionalOnProperty(name = &quot;predix.oracle.uma.enabled&quot;, havingValue = &quot;true&quot;)
+public class Web3jUmaClient implements UmaClient {
+
+    private final PredixOracleProperties properties;
+    private final Web3j web3j;
+    private final RawTransactionManager txManager;
+
+<span class="nc" id="L28">    public Web3jUmaClient(PredixOracleProperties properties) {</span>
+<span class="nc" id="L29">        this.properties = properties;</span>
+<span class="nc" id="L30">        this.web3j = Web3j.build(new HttpService(properties.getUma().getRpcUrl()));</span>
+<span class="nc" id="L31">        Credentials credentials = Credentials.create(properties.getUma().getPrivateKey());</span>
+<span class="nc" id="L32">        this.txManager = new RawTransactionManager(web3j, credentials, properties.getUma().getChainId());</span>
+<span class="nc" id="L33">    }</span>
+
+    @Override
+    public UmaChainResult requestResolution(MarketDto market) {
+<span class="nc" id="L37">        return submitPlaceholder(&quot;REQUEST&quot;, market.getMarketId());</span>
+    }
+
+    @Override
+    public UmaChainResult proposeOutcome(MarketDto market, String outcome) {
+<span class="nc" id="L42">        return submitPlaceholder(&quot;PROPOSE&quot;, market.getMarketId() + &quot;:&quot; + outcome);</span>
+    }
+
+    @Override
+    public UmaChainResult disputeOutcome(String assertionId) {
+<span class="nc" id="L47">        return submitPlaceholder(&quot;DISPUTE&quot;, assertionId);</span>
+    }
+
+    @Override
+    public UmaChainResult settleResolution(String assertionId) {
+<span class="nc" id="L52">        return submitPlaceholder(&quot;SETTLE&quot;, assertionId);</span>
+    }
+
+    @Override
+    public UmaAssertionStatus getAssertionStatus(String assertionId) {
+<span class="nc" id="L57">        return UmaAssertionStatus.builder()</span>
+<span class="nc" id="L58">                .assertionId(assertionId)</span>
+<span class="nc" id="L59">                .state(&quot;ON_CHAIN_QUERY&quot;)</span>
+<span class="nc" id="L60">                .build();</span>
+    }
+
+    private UmaChainResult submitPlaceholder(String action, String ref) {
+        try {
+            // Production: encode Optimistic Oracle V3 calls against ooContract
+<span class="nc" id="L66">            String txHash = &quot;0x&quot; + UUID.randomUUID().toString().replace(&quot;-&quot;, &quot;&quot;);</span>
+<span class="nc" id="L67">            log.info(&quot;UMA {} submitted (placeholder) ref={} contract={}&quot;, action, ref,</span>
+<span class="nc" id="L68">                    properties.getUma().getOoContract());</span>
+<span class="nc" id="L69">            return UmaChainResult.builder()</span>
+<span class="nc" id="L70">                    .txHash(txHash)</span>
+<span class="nc" id="L71">                    .assertionId(&quot;ast-&quot; + ref)</span>
+<span class="nc" id="L72">                    .requestId(&quot;req-&quot; + ref)</span>
+<span class="nc" id="L73">                    .receipt(Map.of(&quot;action&quot;, action, &quot;gasProvider&quot;, DefaultGasProvider.GAS_LIMIT))</span>
+<span class="nc" id="L74">                    .build();</span>
+<span class="nc" id="L75">        } catch (Exception e) {</span>
+<span class="nc" id="L76">            throw new OracleException(OracleErrorCode.UMA_REQUEST_FAILED, &quot;Chain submit failed: &quot; + action, e);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

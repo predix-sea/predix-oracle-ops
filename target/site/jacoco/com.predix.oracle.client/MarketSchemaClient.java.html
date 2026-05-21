@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MarketSchemaClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.client</a> &gt; <span class="el_source">MarketSchemaClient.java</span></div><h1>MarketSchemaClient.java</h1><pre class="source lang-java linenums">package com.predix.oracle.client;
+
+import com.predix.oracle.client.dto.MarketDto;
+import com.predix.oracle.config.PredixOracleProperties;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+<span class="fc" id="L16">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class MarketSchemaClient {
+
+    private final RestTemplate restTemplate;
+    private final PredixOracleProperties properties;
+
+    private final Map&lt;String, MarketDto&gt; localCache = new ConcurrentHashMap&lt;&gt;();
+
+    public MarketDto getMarket(String marketId) {
+<span class="nc bnc" id="L27" title="All 2 branches missed.">        if (!properties.getClients().getMarketSchema().isEnabled()) {</span>
+<span class="nc" id="L28">            return localCache.computeIfAbsent(marketId, id -&gt; MarketDto.builder()</span>
+<span class="nc" id="L29">                    .marketId(id)</span>
+<span class="nc" id="L30">                    .status(&quot;CLOSED&quot;)</span>
+<span class="nc" id="L31">                    .outcomeCodes(List.of(&quot;YES&quot;, &quot;NO&quot;))</span>
+<span class="nc" id="L32">                    .build());</span>
+        }
+        try {
+<span class="nc" id="L35">            String url = properties.getClients().getMarketSchema().getBaseUrl()</span>
+                    + &quot;/api/v1/markets/&quot; + marketId;
+<span class="nc" id="L37">            return restTemplate.getForObject(url, MarketDto.class);</span>
+<span class="nc" id="L38">        } catch (Exception e) {</span>
+<span class="nc" id="L39">            log.warn(&quot;market-schema unavailable, using cache for {}&quot;, marketId);</span>
+<span class="nc" id="L40">            return localCache.get(marketId);</span>
+        }
+    }
+
+    public List&lt;MarketDto&gt; listMarketsByStatus(String status) {
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        if (!properties.getClients().getMarketSchema().isEnabled()) {</span>
+<span class="nc" id="L46">            return localCache.values().stream()</span>
+<span class="nc" id="L47">                    .filter(m -&gt; status.equals(m.getStatus()))</span>
+<span class="nc" id="L48">                    .toList();</span>
+        }
+        try {
+<span class="nc" id="L51">            String url = properties.getClients().getMarketSchema().getBaseUrl()</span>
+                    + &quot;/api/v1/markets?status=&quot; + status;
+<span class="nc" id="L53">            return restTemplate.exchange(url, HttpMethod.GET, null,</span>
+<span class="nc" id="L54">                    new ParameterizedTypeReference&lt;List&lt;MarketDto&gt;&gt;() {}).getBody();</span>
+<span class="nc" id="L55">        } catch (Exception e) {</span>
+<span class="nc" id="L56">            log.warn(&quot;Failed to list markets by status {}&quot;, status);</span>
+<span class="nc" id="L57">            return List.of();</span>
+        }
+    }
+
+    public void updateMarketStatus(String marketId, String status) {
+<span class="nc" id="L62">        MarketDto m = getMarket(marketId);</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (m != null) {</span>
+<span class="nc" id="L64">            m.setStatus(status);</span>
+<span class="nc" id="L65">            localCache.put(marketId, m);</span>
+        }
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (!properties.getClients().getMarketSchema().isEnabled()) {</span>
+<span class="nc" id="L68">            return;</span>
+        }
+        try {
+<span class="nc" id="L71">            String url = properties.getClients().getMarketSchema().getBaseUrl()</span>
+                    + &quot;/api/v1/markets/&quot; + marketId + &quot;/status&quot;;
+<span class="nc" id="L73">            restTemplate.patchForObject(url, Map.of(&quot;status&quot;, status), Void.class);</span>
+<span class="nc" id="L74">        } catch (Exception e) {</span>
+<span class="nc" id="L75">            log.error(&quot;Failed to update market status {}&quot;, marketId, e);</span>
+<span class="nc" id="L76">        }</span>
+<span class="nc" id="L77">    }</span>
+
+    public void resolveMarket(String marketId, String winningOutcome, String assertionId) {
+<span class="nc" id="L80">        MarketDto m = getMarket(marketId);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (m == null) {</span>
+<span class="nc" id="L82">            m = MarketDto.builder().marketId(marketId).build();</span>
+        }
+<span class="nc" id="L84">        m.setStatus(&quot;RESOLVED&quot;);</span>
+<span class="nc" id="L85">        m.setWinningOutcome(winningOutcome);</span>
+<span class="nc" id="L86">        m.setAssertionId(assertionId);</span>
+<span class="nc" id="L87">        localCache.put(marketId, m);</span>
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (!properties.getClients().getMarketSchema().isEnabled()) {</span>
+<span class="nc" id="L90">            return;</span>
+        }
+        try {
+<span class="nc" id="L93">            String url = properties.getClients().getMarketSchema().getBaseUrl()</span>
+                    + &quot;/api/v1/markets/&quot; + marketId + &quot;/resolve&quot;;
+<span class="nc" id="L95">            restTemplate.postForObject(url, Map.of(</span>
+                    &quot;winningOutcome&quot;, winningOutcome,
+                    &quot;assertionId&quot;, assertionId
+            ), Void.class);
+<span class="nc" id="L99">        } catch (Exception e) {</span>
+<span class="nc" id="L100">            log.error(&quot;Failed to resolve market {}&quot;, marketId, e);</span>
+<span class="nc" id="L101">        }</span>
+<span class="nc" id="L102">    }</span>
+
+    public void seedMarket(MarketDto market) {
+<span class="nc" id="L105">        localCache.put(market.getMarketId(), market);</span>
+<span class="nc" id="L106">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

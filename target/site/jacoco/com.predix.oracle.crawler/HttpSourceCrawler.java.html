@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HttpSourceCrawler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.crawler</a> &gt; <span class="el_source">HttpSourceCrawler.java</span></div><h1>HttpSourceCrawler.java</h1><pre class="source lang-java linenums">package com.predix.oracle.crawler;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.predix.oracle.exception.OracleErrorCode;
+import com.predix.oracle.exception.OracleException;
+import com.predix.oracle.repository.entity.OracleSourceEntity;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
+
+<span class="fc" id="L19">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class HttpSourceCrawler {
+
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    public SourceFetchResult fetch(OracleSourceEntity source, String marketId) {
+<span class="fc" id="L28">        String url = UriComponentsBuilder.fromHttpUrl(source.getBaseUrl())</span>
+<span class="fc" id="L29">                .queryParam(&quot;marketId&quot;, marketId)</span>
+<span class="fc" id="L30">                .toUriString();</span>
+        try {
+<span class="fc" id="L32">            ResponseEntity&lt;String&gt; response = restTemplate.getForEntity(url, String.class);</span>
+<span class="pc bpc" id="L33" title="1 of 4 branches missed.">            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {</span>
+<span class="fc" id="L34">                throw new OracleException(OracleErrorCode.ORACLE_SOURCE_UNAVAILABLE,</span>
+<span class="fc" id="L35">                        &quot;Source returned non-2xx: &quot; + source.getName());</span>
+            }
+<span class="fc" id="L37">            JsonNode root = objectMapper.readTree(response.getBody());</span>
+<span class="fc" id="L38">            String outcome = root.path(&quot;outcome&quot;).asText(null);</span>
+<span class="pc bpc" id="L39" title="2 of 4 branches missed.">            if (outcome == null || outcome.isBlank()) {</span>
+<span class="nc" id="L40">                outcome = root.path(&quot;result&quot;).asText(&quot;UNKNOWN&quot;);</span>
+            }
+<span class="fc" id="L42">            BigDecimal confidence = null;</span>
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">            if (root.has(&quot;confidence&quot;)) {</span>
+<span class="fc" id="L44">                confidence = new BigDecimal(root.get(&quot;confidence&quot;).asText(&quot;1&quot;));</span>
+            }
+<span class="fc" id="L46">            Map&lt;String, Object&gt; raw = objectMapper.convertValue(root, Map.class);</span>
+<span class="fc" id="L47">            return SourceFetchResult.builder()</span>
+<span class="fc" id="L48">                    .sourceUrl(url)</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">                    .rawPayload(raw != null ? raw : new HashMap&lt;&gt;())</span>
+<span class="fc" id="L50">                    .normalizedOutcome(outcome)</span>
+<span class="fc" id="L51">                    .confidenceScore(confidence)</span>
+<span class="fc" id="L52">                    .build();</span>
+<span class="fc" id="L53">        } catch (OracleException ex) {</span>
+<span class="fc" id="L54">            throw ex;</span>
+<span class="nc" id="L55">        } catch (Exception ex) {</span>
+<span class="nc" id="L56">            log.warn(&quot;Failed to fetch source {} for market {}&quot;, source.getName(), marketId, ex);</span>
+<span class="nc" id="L57">            throw new OracleException(OracleErrorCode.ORACLE_SOURCE_UNAVAILABLE,</span>
+<span class="nc" id="L58">                    &quot;Failed to fetch source: &quot; + source.getName(), ex);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

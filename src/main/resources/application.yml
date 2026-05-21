@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: predix-oracle-ops
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:predix_oracle}
+    username: ${DB_USER:predix}
+    password: ${DB_PASSWORD:predix}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:predix}
+    password: ${RABBITMQ_PASSWORD:predix}
+
+server:
+  port: ${SERVER_PORT:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+predix:
+  oracle:
+    auth-token: ${ORACLE_ADMIN_TOKEN:change-me-in-production}
+    evidence:
+      min-sources: 2
+      quorum-ratio: 0.51
+    scheduler:
+      market-scan-cron: "0 */2 * * * *"
+      assertion-sync-cron: "0 */1 * * * *"
+      retry-cron: "0 */30 * * * * *"
+    retry:
+      max-attempts: 5
+      base-delay-ms: 1000
+      multiplier: 2.0
+    uma:
+      enabled: ${UMA_ENABLED:false}
+      chain-id: ${UMA_CHAIN_ID:137}
+      rpc-url: ${POLYGON_RPC_URL:https://polygon-rpc.com}
+      private-key: ${UMA_PRIVATE_KEY:}
+      oo-contract: ${UMA_OO_CONTRACT:0x0000000000000000000000000000000000000000}
+    clients:
+      market-schema:
+        base-url: ${MARKET_SCHEMA_URL:http://localhost:8081}
+      matching-engine:
+        base-url: ${MATCHING_ENGINE_URL:http://localhost:8082}
+        enabled: ${MATCHING_ENGINE_ENABLED:false}
+      event-indexer:
+        base-url: ${EVENT_INDEXER_URL:http://localhost:8083}
+        enabled: ${EVENT_INDEXER_ENABLED:false}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.predix.oracle: INFO
+    org.springframework.amqp: WARN

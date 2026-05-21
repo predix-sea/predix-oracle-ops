@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.predix.oracle.service.ResolutionJobExecutorTest
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.100 s -- in com.predix.oracle.service.ResolutionJobExecutorTest

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OracleSourceService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">predix-oracle-ops</a> &gt; <a href="index.source.html" class="el_package">com.predix.oracle.service</a> &gt; <span class="el_source">OracleSourceService.java</span></div><h1>OracleSourceService.java</h1><pre class="source lang-java linenums">package com.predix.oracle.service;
+
+import com.predix.oracle.controller.dto.CreateSourceRequest;
+import com.predix.oracle.controller.dto.PatchSourceRequest;
+import com.predix.oracle.exception.OracleErrorCode;
+import com.predix.oracle.exception.OracleException;
+import com.predix.oracle.repository.OracleSourceRepository;
+import com.predix.oracle.repository.entity.OracleSourceEntity;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class OracleSourceService {
+
+    private final OracleSourceRepository repository;
+
+    public List&lt;OracleSourceEntity&gt; listAll() {
+<span class="nc" id="L22">        return repository.findAll();</span>
+    }
+
+    @Transactional
+    public OracleSourceEntity create(CreateSourceRequest request) {
+<span class="fc" id="L27">        OracleSourceEntity entity = OracleSourceEntity.builder()</span>
+<span class="fc" id="L28">                .name(request.getName())</span>
+<span class="pc bpc" id="L29" title="1 of 2 branches missed.">                .type(request.getType() != null ? request.getType() : &quot;HTTP_API&quot;)</span>
+<span class="fc" id="L30">                .baseUrl(request.getBaseUrl())</span>
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">                .enabled(request.getEnabled() != null ? request.getEnabled() : true)</span>
+<span class="pc bpc" id="L32" title="1 of 2 branches missed.">                .priority(request.getPriority() != null ? request.getPriority() : 100)</span>
+<span class="fc" id="L33">                .build();</span>
+<span class="fc" id="L34">        return repository.save(entity);</span>
+    }
+
+    @Transactional
+    public OracleSourceEntity patch(Long id, PatchSourceRequest request) {
+<span class="fc" id="L39">        OracleSourceEntity entity = get(id);</span>
+<span class="pc bpc" id="L40" title="1 of 2 branches missed.">        if (request.getBaseUrl() != null) entity.setBaseUrl(request.getBaseUrl());</span>
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        if (request.getPriority() != null) entity.setPriority(request.getPriority());</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">        if (request.getType() != null) entity.setType(request.getType());</span>
+<span class="fc" id="L43">        return repository.save(entity);</span>
+    }
+
+    @Transactional
+    public OracleSourceEntity setEnabled(Long id, boolean enabled) {
+<span class="nc" id="L48">        OracleSourceEntity entity = get(id);</span>
+<span class="nc" id="L49">        entity.setEnabled(enabled);</span>
+<span class="nc" id="L50">        return repository.save(entity);</span>
+    }
+
+    public OracleSourceEntity get(Long id) {
+<span class="fc" id="L54">        return repository.findById(id)</span>
+<span class="fc" id="L55">                .orElseThrow(() -&gt; new OracleException(OracleErrorCode.NOT_FOUND, &quot;Source not found&quot;));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
