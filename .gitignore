@@ -1,0 +1,21 @@
+# Maven build output
+target/
+
+# Compiled artifacts
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+
+# Logs
+*.log

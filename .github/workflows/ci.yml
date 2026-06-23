@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  ci:
+    uses: predix-sea/predix-platform-ci/.github/workflows/reusable-java-ci.yml@main
+    with:
+      service-name: predix-oracle-ops
+      coverage-threshold: 75
+      dockerfile-path: Dockerfile
+      maven-goal: verify
+      run-integration: true
+      owasp-fail-on-cvss: 7
+    secrets: inherit
