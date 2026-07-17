@@ -115,6 +115,7 @@ mvn verify jacoco:report   # coverage report in target/site/jacoco
 - [architecture.md](docs/architecture.md)
 - [resolution-flow.md](docs/resolution-flow.md)
 - [evidence-policy.md](docs/evidence-policy.md)
+- [oracle-ctf-mapping.md](docs/oracle-ctf-mapping.md) — UMA job lifecycle ↔ Gnosis CTF (Phase 0 sketch)
 
 ## Downstream services
 
